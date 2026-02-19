@@ -112,7 +112,7 @@ create_experiment_dirs() {
     for model in "${models[@]}"; do
         # Sanitize the model name before using it as a directory name
         local sanitized_model
-        sanitized_model=$(sanitize_model_name "$model")
+        sanitized_model=$(sanitize_model_name "${model}")
         mkdir -p "${experiment_dir}/${sanitized_model}"
     done
     

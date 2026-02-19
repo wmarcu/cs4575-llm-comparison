@@ -177,7 +177,9 @@ execute_trials() {
             ((model_trial_count[$model]++))
             
             local trial_num=${model_trial_count[$model]}
-            local output_file="${experiment_dir}/${model}/trial-$(printf '%03d' $trial_num).csv"
+            local sanitized_model
+            sanitized_model=$(sanitize_model_name "${model}")
+            local output_file="${experiment_dir}/${sanitized_model}/trial-$(printf '%03d' $trial_num).csv"
             
             log_info "Executing trial ${trial_num}/${NUM_TRIALS} for model: ${model}"
             
