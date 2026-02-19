@@ -110,7 +110,10 @@ create_experiment_dirs() {
     mkdir -p "${experiment_dir}/control"
     
     for model in "${models[@]}"; do
-        mkdir -p "${experiment_dir}/${model}"
+        # Sanitize the model name before using it as a directory name
+        local sanitized_model
+        sanitized_model=$(sanitize_model_name "$model")
+        mkdir -p "${experiment_dir}/${sanitized_model}"
     done
     
     log_success "Created experiment directory structure at: ${experiment_dir}"
