@@ -5,6 +5,8 @@
 # ============================================================================
 
 perform_warmup() {
+    local responses_file="${1:-}"
+
     log_section "Performing System Warmup"
     
     log_info "Warmup duration: ${WARMUP_DURATION} seconds"
@@ -19,7 +21,7 @@ perform_warmup() {
     
     # LLM warmup - send queries for the specified duration
     log_info "Warming up LLM models for ${WARMUP_DURATION} seconds..."
-    llm_warmup &
+    llm_warmup "${responses_file}" &
     local llm_warmup_pid=$!
     
     # Wait for both warmup processes to complete
@@ -80,11 +82,21 @@ compute_fibonacci() {
 
 # LLM warmup function - sends queries for the specified duration
 llm_warmup() {
+    local responses_file="${1:-}"
     local duration=$WARMUP_DURATION
     local end_time=$(($(date +%s) + duration))
     local query_count=0
     
     log_debug "Starting LLM warmup for ${duration} seconds"
+
+    # Write warmup header to responses file
+    if [[ -n "${responses_file}" ]]; then
+        echo "" >> "${responses_file}"
+        echo "========================================" >> "${responses_file}"
+        echo "WARMUP PHASE - $(date '+%Y-%m-%d %H:%M:%S')" >> "${responses_file}"
+        echo "========================================" >> "${responses_file}"
+        echo "" >> "${responses_file}"
+    fi
     
     # Keep sending queries until duration expires
     while [[ $(date +%s) -lt $end_time ]]; do
@@ -98,8 +110,18 @@ llm_warmup() {
             log_debug "Warmup query ${query_count} for ${model}"
             
             # Send a simple warmup query (suppress output)
-            "${OLLAMA_PATH}" run "${model}" "Hello" >/dev/null 2>&1 &
-            local ollama_pid=$!
+            if [[ -n "${responses_file}" ]]; then
+                {
+                    echo "=== Warmup Query ${query_count} - Model: ${model} - $(date '+%Y-%m-%d %H:%M:%S') ==="
+                    "${OLLAMA_PATH}" run "${model}" "--think=false" "${LLM_QUERY}" 2>&1
+                    echo "=== End of Response ==="
+                    echo ""
+                } >> "${responses_file}" &
+                local ollama_pid=$!
+            else
+                "${OLLAMA_PATH}" run "${model}" "--think=false" "${LLM_QUERY}" >/dev/null 2>&1 &
+                local ollama_pid=$!
+            fi
             
             # Wait for query to complete or timeout after 10 seconds
             local timeout=10

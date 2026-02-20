@@ -79,6 +79,14 @@ main() {
     
     # Save metadata
     save_metadata "${EXPERIMENT_DIR}"
+
+    # Create responses file
+    local responses_file="${EXPERIMENT_DIR}/responses.txt"
+    touch "${responses_file}"
+    echo "LLM RESPONSES LOG" > "${responses_file}"
+    echo "Experiment: ${EXPERIMENT_NAME}" >> "${responses_file}"
+    echo "Started: $(date '+%Y-%m-%d %H:%M:%S')" >> "${responses_file}"
+    echo "" >> "${responses_file}"
     
     # Display experiment configuration
     log_section "Experiment Configuration"
@@ -90,10 +98,10 @@ main() {
     echo ""
     
     # Perform warmup
-    perform_warmup
+    perform_warmup "${responses_file}"
     
     # Execute trials
-    execute_trials "${EXPERIMENT_DIR}"
+    execute_trials "${EXPERIMENT_DIR}" "${responses_file}"
 
     # Fix ownership of entire experiment directory if running with sudo
     fix_ownership "${EXPERIMENT_DIR}"

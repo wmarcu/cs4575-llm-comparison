@@ -8,7 +8,7 @@
 # Paths
 # ────────────────────────────────────────────────────────────────────────────
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENERGIBRIDGE_PATH="${ROOT_DIR}/../energibridge/energibridge"
+ENERGIBRIDGE_PATH="${ROOT_DIR}/../energibridge/target/release/energibridge"
 OLLAMA_PATH="${OLLAMA_PATH:-ollama}"
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -18,16 +18,16 @@ OLLAMA_PATH="${OLLAMA_PATH:-ollama}"
 NUM_TRIALS="${NUM_TRIALS:-30}"
 
 # Number of control trials (no LLM, baseline measurement)
-NUM_CONTROL_TRIALS="${NUM_CONTROL_TRIALS:-0}"
+NUM_CONTROL_TRIALS="${NUM_CONTROL_TRIALS:-30}"
 
 # Rest time between trials in seconds
-REST_TIME_SECONDS="${REST_TIME_SECONDS:-10}"
+REST_TIME_SECONDS="${REST_TIME_SECONDS:-60}"
 
 # LLM models to test (space-separated list)
-LLM_MODELS="${LLM_MODELS:-llama3.1:8b-instruct-q4_K_M llama3.1:8b-instruct-q8_0}"
+LLM_MODELS="${LLM_MODELS:-llama3.1:8b-instruct-q4_K_M llama3.1:8b-instruct-q8_0 llama3.1:8b-instruct-fp16 deepseek-r1:8b-llama-distill-q4_K_M deepseek-r1:8b-llama-distill-q8_0 deepseek-r1:8b-llama-distill-fp16}"
 
 # The time to run the sleep command for obtaining "baseline" energy consumption
-CONTROL_SLEEP_SECONDS="${CONTROL_SLEEP_SECONDS:-10}"
+CONTROL_SLEEP_SECONDS="${CONTROL_SLEEP_SECONDS:-60}"
 
 # ────────────────────────────────────────────────────────────────────────────
 # LLM Query Configuration
@@ -41,10 +41,17 @@ LLM_QUERY="${LLM_QUERY:-Here is a list of 16 words: popular, period, cross, stam
 ENERGIBRIDGE_INTERVAL="${ENERGIBRIDGE_INTERVAL:-200}"
 
 # Maximum execution time in seconds (-1 to disable)
-ENERGIBRIDGE_MAX_EXECUTION="${ENERGIBRIDGE_MAX_EXECUTION:-0}"
+ENERGIBRIDGE_MAX_EXECUTION="${ENERGIBRIDGE_MAX_EXECUTION:-60}"
 
 # Enable GPU monitoring (true/false)
 ENERGIBRIDGE_GPU="${ENERGIBRIDGE_GPU:-true}"
+
+# LD_LIBRARY_PATH for GPU support (required for NVML on some systems)
+# Set this if energibridge can't find NVIDIA libraries
+# NixOS example: /run/opengl-driver/lib
+# Ubuntu/Debian example: /usr/local/cuda/lib64
+# Leave empty if not needed
+ENERGIBRIDGE_LD_LIBRARY_PATH="${ENERGIBRIDGE_LD_LIBRARY_PATH:-/run/opengl-driver/lib}"
 
 # Enable summary output (true/false)
 ENERGIBRIDGE_SUMMARY="${ENERGIBRIDGE_SUMMARY:-false}"

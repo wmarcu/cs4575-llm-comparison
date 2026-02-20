@@ -9,11 +9,16 @@ run_llm_trial() {
     local model="$1"
     local trial_number="$2"
     local output_file="$3"
+    local responses_file="${4:-}"
     
     log_debug "Running trial ${trial_number} for model: ${model}"
     
     # Build energibridge command
-    local energibridge_cmd="${ENERGIBRIDGE_PATH}"
+    local energibridge_cmd=""
+    if [[ -n "${ENERGIBRIDGE_LD_LIBRARY_PATH}" ]]; then
+        energibridge_cmd="LD_LIBRARY_PATH=${ENERGIBRIDGE_LD_LIBRARY_PATH}"
+    fi
+    energibridge_cmd="${energibridge_cmd} ${ENERGIBRIDGE_PATH}"
     energibridge_cmd="${energibridge_cmd} --output \"${output_file}\""
     energibridge_cmd="${energibridge_cmd} --separator \"${ENERGIBRIDGE_SEPARATOR}\""
     energibridge_cmd="${energibridge_cmd} --interval ${ENERGIBRIDGE_INTERVAL}"
@@ -28,7 +33,7 @@ run_llm_trial() {
     fi
     
     # Add the ollama command
-    energibridge_cmd="${energibridge_cmd} -- ${OLLAMA_PATH} run ${model} \"${LLM_QUERY}\""
+    energibridge_cmd="${energibridge_cmd} -- ${OLLAMA_PATH} run ${model} --think=false \"${LLM_QUERY}\""
     
     # Execute the command
     log_debug "Executing: ${energibridge_cmd}"
@@ -36,14 +41,31 @@ run_llm_trial() {
         # Show LLM output for verification
         echo ""
         log_info "=== LLM Response (Trial ${trial_number}, Model: ${model}) ==="
-        eval "${energibridge_cmd}"
-        local exit_code=$?
+        if [[ -n "${responses_file}" ]]; then
+            # Log to both terminal and file
+            eval "${energibridge_cmd}" 2>&1 | tee -a "${responses_file}"
+            local exit_code=${PIPESTATUS[0]}
+        else
+            eval "${energibridge_cmd}"
+            local exit_code=$?
+        fi
         echo ""
         log_info "=== End of LLM Response ==="
     else
-        # Hide output for cleaner logs
-        eval "${energibridge_cmd}" > /dev/null 2>&1
-        local exit_code=$?
+        # Log to response file
+        if [[ -n "${responses_file}" ]]; then
+            {
+                echo ""
+                echo "=== Trial ${trial_number} - Model: ${model} - $(date '+%Y-%m-%d %H:%M:%S') ==="
+                eval "${energibridge_cmd}" 2>&1
+                echo "=== End of Response ==="
+                echo ""
+            } >> "${responses_file}"
+            local exit_code=$?
+        else
+            eval "${energibridge_cmd}" > /dev/null 2>&1
+            local exit_code=$?
+        fi
     fi
     
     local exit_code=$?
@@ -65,7 +87,8 @@ run_control_trial() {
     log_debug "Running control trial ${trial_number}"
     
     # Build energibridge command for control (just sleep for a short duration)
-    local energibridge_cmd="${ENERGIBRIDGE_PATH}"
+    local energibridge_cmd="LD_LIBRARY_PATH=/run/opengl-driver/lib"
+    energibridge_cmd="${energibridge_cmd} ${ENERGIBRIDGE_PATH}"
     energibridge_cmd="${energibridge_cmd} --output \"${output_file}\""
     energibridge_cmd="${energibridge_cmd} --separator \"${ENERGIBRIDGE_SEPARATOR}\""
     energibridge_cmd="${energibridge_cmd} --interval ${ENERGIBRIDGE_INTERVAL}"
@@ -131,6 +154,16 @@ generate_trial_schedule() {
 # Execute all trials according to randomized schedule
 execute_trials() {
     local experiment_dir="$1"
+    local responses_file="${2:-}"
+
+    # Add trials header to responses file
+    if [[ -n "${responses_file}" ]]; then
+        echo "" >> "${responses_file}"
+        echo "========================================" >> "${responses_file}"
+        echo "TRIAL PHASE - $(date '+%Y-%m-%d %H:%M:%S')" >> "${responses_file}"
+        echo "========================================" >> "${responses_file}"
+        echo "" >> "${responses_file}"
+    fi
     
     log_section "Executing Trials"
     
@@ -183,7 +216,7 @@ execute_trials() {
             
             log_info "Executing trial ${trial_num}/${NUM_TRIALS} for model: ${model}"
             
-            if run_llm_trial "${model}" $trial_num "${output_file}"; then
+            if run_llm_trial "${model}" $trial_num "${output_file}" "${responses_file}"; then
                 log_success "Trial ${trial_num} for ${model} completed"
             else
                 log_warning "Trial ${trial_num} for ${model} encountered issues"
