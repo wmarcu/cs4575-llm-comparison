@@ -1,0 +1,22 @@
+{
+  "experiment_name": "experiment-001",
+  "timestamp": "2026-02-20T00:25:04Z",
+  "hostname": "default",
+  "os": "nixos",
+  "configuration": {
+    "num_trials": 30,
+    "num_control_trials": 30,
+    "rest_time_seconds": 60,
+    "llm_models": ["llama3.1:8b-instruct-q4_K_M", "llama3.1:8b-instruct-q8_0", "llama3.1:8b-instruct-fp16", "deepseek-r1:8b-llama-distill-q4_K_M", "deepseek-r1:8b-llama-distill-q8_0", "deepseek-r1:8b-llama-distill-fp16"],
+    "llm_query": "Here is a list of 16 words: popular, period, cross, stamp, span, psalm, pass, ryan, lanyard, stretch, reacher, marple, fair, interval, wristband, bosch. Categorize the list into 4 groups of 4 which each share something in common. Categories will always be more specific than '5-LETTER-WORDS', 'NAMES' or 'VERBS'. All words must be used and each word can only be used once. Describe what the 4 categories are and justify your assignment for each word. Fianlly, assess how confident you are that your solution is correct.",
+    "energibridge": {
+      "interval": 200,
+      "max_execution": 60,
+      "gpu_enabled": true,
+      "summary_enabled": false
+    },
+    "warmup": {
+      "duration": 300
+    }
+  }
+}
