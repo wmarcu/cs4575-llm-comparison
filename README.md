@@ -4,21 +4,38 @@ This repository contains source code for data collection and analysis in fufillm
 ## Data Collection
 Bash scripts are used to automate the data collection process. The `/src/run_experiment.sh` which serves as the main orchestration script. The script's behaviour can be easily configured by editing `/src/config.sh`. To run the script use the following command:
 
-```bash
-sudo ./run_experiment.sh
-```
-
 ### Prerequisites
-Important: the script needs `sudo` permissions because Energibridge needs to have the necessary privileges to read energy usage values. Also make sure that any kernal drivers for energy measurements are loaded; for Linux on Intel architectures, this means loading the msr kernel driver using:
+
+Requirements for running the script are:
+- Energibridge (set the correct path to the executable in `config.sh`)
+- Ollama (with required models downloaded)
+- Cargo and rustc (if building energibridge from source - required for measuring GPU)
+
+Important: Make sure that any kernal drivers for energy measurements are loaded; for Linux on Intel architectures, this means loading the msr kernel driver using:
 
 ```bash
 sudo modprobe msr
 ```
 
-Other requirements for running the script are:
-- Energibridge
-- Ollama
-- Locally available models
+By default, the script needs `sudo` permissions because Energibridge needs to have the necessary privileges to read energy usage values. To avoid having to run as sudo, run the following commands before hand:
+
+```bash
+sudo chgrp -R msr /dev/cpu/*/msr;
+sudo chmod g+r /dev/cpu/*/msr;
+sudo setcap cap_sys_rawio=ep /target/release/energibridge;
+```
+
+Important: Nvidia GPU support for Energibridge uses the `nvml-wrapper` crate which must be loaded dynamically. If this library is not available or not in standard search paths, `NVML::init()` will fail silently, causing Energibridge to skip GPU metrics. GPU metrics are also not collected if using a release executable so make sure to build it yourself using:
+
+```bash
+cargo build -r;
+```
+
+One way to make NVML loadable dynamically is to add `/run/opengl-driver/lib` (a symlink to the current graphics driver) to `LD_LIBRARY_PATH`. This has only been tested on NixOS using Nvidia drivers so this solution might not work for other systems. The command to run is therefore:
+
+```bash
+LD_LIBRARY_PATH=/run/opengl-driver/lib ./run_experiment.sh
+```
 
 ### Extending the Script
 The script is organised into modules to make it development easier. These modules are imported by the main `run_experiment.sh` script. The modules in question are:
