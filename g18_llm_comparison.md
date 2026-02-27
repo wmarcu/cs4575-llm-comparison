@@ -219,14 +219,13 @@ On average, the *baseline Llama* architecture generated **27.5%** more tokens pe
 ## Limitations & Future Work 
 This study prioritized experimental control, and a few design choices constrain how far the findings generalize.
 
-All inferences used a single fixed prompt. Keeping conditions identical across all models required this, but it means the verbosity and energy patterns we observed are specific to structured reasoning tasks. Testing across a broader prompt set would strengthen the conclusions, particularly to see whether the behavioral differences between distilled and non-distilled models persist across different task types like code generation or summarization.
+All inferences used a single fixed prompt to maintain identical conditions across models; consequently, the observed verbosity and energy patterns are currently situated within the context of structured reasoning tasks. Testing across a broader prompt set would strengthen the conclusions, particularly to see whether the behavioral differences between distilled and non-distilled models persist across different task types like code generation or summarization.
 
 The hardware setup is also worth acknowledging. Everything ran on a single machine, and energy readings during inference are sensitive to GPU architecture and thermal behavior. The relative differences between models should still hold, but the absolute values are specific to our setup. Expanding to additional model architectures beyond Llama and Qwen would help clarify whether the efficiency patterns found here are general properties of knowledge distillation from DeepSeek-R1, or something more specific to the two architectures tested.
 
 Finally, DeepSeek's thinking mode was disabled throughout to keep the comparison fair against models that do not have an equivalent feature. The energy figures for DeepSeek are therefore likely lower than a real deployment with extended reasoning enabled would produce. Measuring that overhead, and whether it is offset by quality improvements, would be a natural follow-up.
 
 Beyond these limitations, the most immediate extension would be evaluating response correctness alongside energy consumption. This study identifies which models are more efficient, but not whether that comes at a quality cost. Computing a quality per joule metric would make the findings considerably more actionable, and exploring different quantization parameters alongside this would also be worthwhile.
-
 
 
 ## Conclusion
