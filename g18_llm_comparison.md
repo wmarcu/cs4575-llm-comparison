@@ -25,98 +25,111 @@ GPU: Nvidia GeForce RTX 4090 Mobile 16GB GDDR6
 CPU: 13th Gen Intel(R) Core(TM) i9-13900H (2.60 GHz)
 OS: NixOS 25.11 “Xantusia”
 
-We test the following 12 models locally using [Ollama] (https://ollama.com/) and measure their energy consumption using [EnergiBridge] (https://github.com/tdurieux/EnergiBridge). Due to storage limitations, we could only load 6 models at a time on the system, so each architecture was tested separately on different days which should not impact our findings since we are not comparing architectures.
+We test the following 12 models locally using [Ollama](https://ollama.com/) and measure their energy consumption using [EnergiBridge](https://github.com/tdurieux/EnergiBridge). Due to storage limitations, we could only load 6 models at a time on the system, so each architecture was tested separately on different days which should not impact our findings since we are not comparing architectures.
+
 **Batch 1**
-deepseek-r1_8b-llama-distill-fp16  VS  llama3.1_8b-instruct-fp16
-deepseek-r1_8b-llama-distill-q8_0  VS  llama3.1_8b-instruct-q8_0
-deepseek-r1_8b-llama-distill-q4_K_M  VS  llama3.1_8b-instruct-q4_K_M
+- deepseek-r1_8b-llama-distill-fp16  VS  llama3.1_8b-instruct-fp16
+- deepseek-r1_8b-llama-distill-q8_0  VS  llama3.1_8b-instruct-q8_0
+- deepseek-r1_8b-llama-distill-q4_K_M  VS  llama3.1_8b-instruct-q4_K_M
 
 **Batch 2**
-deepseek-r1_7b-qwen-distill-q4_K_M  VS  qwen2.5_7b-instruct-q4_K_M
-deepseek-r1_7b-qwen-distill-q8_0  VS  qwen2.5_7b-instruct-q8_0
-deepseek-r1_7b-qwen-distill-fp16  VS  qwen2.5_7b-instruct-fp16
+- deepseek-r1_7b-qwen-distill-q4_K_M  VS  qwen2.5_7b-instruct-q4_K_M
+- deepseek-r1_7b-qwen-distill-q8_0  VS  qwen2.5_7b-instruct-q8_0
+- deepseek-r1_7b-qwen-distill-fp16  VS  qwen2.5_7b-instruct-fp16
 
 
-Each model receives an identical prompt featuring a [Connections Word Puzzle] (https://www.connectionsunlimited.org/?archive=2/2/2026#login), chosen for its open-ended nature and complexity which ensures that models must engage in genuine problem solving rather than simple recall. We disable DeepSeek’s thinking mode to facilitate fair comparison with the original model which does not support this feature. This prompt is repeated 30 times for each model, using new sessions each time to prevent any caching effects that could skew energy measurements, for a total of 360 inferences. We also conduct 30 control measurements for each architecture where we measure the system’s idle energy usage as a baseline.
+Each model receives an identical prompt featuring a [Connections Word Puzzle](https://www.connectionsunlimited.org/?archive=2/2/2026#login), chosen for its open-ended nature and complexity which ensures that models must engage in genuine problem solving rather than simple recall. We disable DeepSeek’s thinking mode to facilitate fair comparison with the original model which does not support this feature. This prompt is repeated 30 times for each model, using new sessions each time to prevent any caching effects that could skew energy measurements, for a total of 360 inferences. We also conduct 30 control measurements for each architecture where we measure the system’s idle energy usage as a baseline.
 
-Before starting the experiment, we ensure a minimal running system by closing all applications, removing all physical connections to peripherals and disabling network, bluetooth, and notifications. We also set the room temperature to a constant value of 17 degrees Celsius and freeze our settings by disabling any automatic setting adjustments; in particular, we set the screen brightness to a fixed value of 70%.  We then warm-up the system for 5 minutes by prompting the models without invoking EnergiBridge, and subsequently generate a randomised trial schedule. A trial can be either an inference or an idle control. We use random shuffling to mitigate the effects of possible changes in the environment which could skew energy measurements. Between each trial, we allow the system to rest for 1 minute to prevent anomalous energy readings due to tail energy consumption. We automated the entire experimental procedure using bash scripts and made our [replication package] (https://github.com/wmarcu/cs4575-llm-comparison) publicly available to be transparent and encourage reproducibility.
+Before starting the experiment, we ensure a minimal running system by closing all applications, removing all physical connections to peripherals and disabling network, bluetooth, and notifications. We also set the room temperature to a constant value of 17 degrees Celsius and freeze our settings by disabling any automatic setting adjustments; in particular, we set the screen brightness to a fixed value of 70%.  We then warm-up the system for 5 minutes by prompting the models without invoking EnergiBridge, and subsequently generate a randomised trial schedule. A trial can be either an inference or an idle control. We use random shuffling to mitigate the effects of possible changes in the environment which could skew energy measurements. Between each trial, we allow the system to rest for 1 minute to prevent anomalous energy readings due to tail energy consumption. We automated the entire experimental procedure using bash scripts and made our [replication package](https://github.com/wmarcu/cs4575-llm-comparison) publicly available to be transparent and encourage reproducibility.
 
 
 ## Data Preprocessing
-With our raw metrics successfully recorded by EnergiBridge, we were left with 420 individual CSV files (30 trials across 12 model configurations, plus a baseline control group in each experiment). In this study, we focus on Graphics Processing Unit (GPU) metrics because LLM inference is fundamentally a GPU-bound workload. 
+With our raw metrics successfully recorded by _EnergiBridge_, we were left with 420 individual CSV files (30 trials across 12 model configurations, plus a baseline control group in each experiment). In this study, we focus on Graphics Processing Unit (GPU) metrics because LLM inference is fundamentally a GPU-bound workload. 
 
 ### Total Energy (Trapezoid Rule)
 EnergiBridge records power consumption as a rate (milliwatts) at regular time intervals. To find the actual total energy consumed by the GPU during a prompt generation, we needed to calculate the total area under the power-over-time curve. We achieved this by applying the Trapezoid Rule for numerical integration. By integrating the GPU power (converted to Watts) over the duration of the execution (in seconds), we successfully derived the Total Energy in Joules for every single trial.
 
 ### Data Cleaning: Errors and Outliers
 
-In empirical software engineering, there is a strict difference between a statistical outlier (a valid run that was unexpectedly slow) and invalid data. Including broken runs in our dataset would artificially lower our average energy consumption so it is vital to account for this. We first scanned the output logs to remove cases where the model failed to load, likely due to GPU VRAM bottlenecks. Any trial that hit our hard execution limit (60 seconds) was classified as a timeout. Finally, we applied a consistent statistical filter across every model configuration. Any trial whose total execution time deviated from its sample mean by more than 3 standard deviations (|x - x_bar| > 3s) was removed. In total, our cleaning pipeline discarded 14 invalid or anomalous runs. We retained the clean dataset of 406 valid executions out of the original 420.
+In empirical software engineering, there is a strict difference between a statistical outlier (a valid run that was unexpectedly slow) and invalid data. Including broken runs in our dataset would artificially lower our average energy consumption so it is vital to account for this. We first scanned the output logs to remove cases where the model failed to load, likely due to GPU VRAM bottlenecks. Any trial that hit our hard execution limit (60 seconds) was classified as a timeout. Finally, we applied a consistent statistical filter across every model configuration. Any trial whose total execution time deviated from its sample mean by more than 3 standard deviations $(|x - \bar{a}| > 3s)$ was removed. In total, our cleaning pipeline discarded 14 invalid or anomalous runs. We retained the clean dataset of **406 valid executions** out of the original 420.
 
 ### Baseline Subtraction
-To ensure our measurements reflected pure algorithmic efficiency, rather than static hardware overhead, we utilized our control group to calculate the system’s baseline idle power. By subtracting this constant background footprint from the total energy of each execution, we isolated the Dynamic Energy (ΔΕ). This provides a much clearer comparison of each model's true efficiency.
+To ensure our measurements reflected pure algorithmic efficiency, rather than static hardware overhead, we utilized our control group to calculate the system’s baseline idle power. By subtracting this constant background footprint from the total energy of each execution, we isolated the Dynamic Energy $(ΔΕ)$. This provides a much clearer comparison of each model's true efficiency.
 
 ## Results & Discussion
 
 ### Energy Consumption
-To visualize the distribution of energy consumption across our 12 configurations, we utilized a Violin-Boxplot. This representation allows us to observe both the central tendencies (median) and the probability density of the trials, which is critical for assessing model reliability.
+To visualize the distribution of energy consumption across our 12 configurations, we utilized **Violin-Boxplots**. This representation allows us to observe both the central tendencies (median) and the probability density of the trials, which is critical for assessing model reliability.
 
-<img src="./images/experiment-001/energy_violin_boxplot.png" alt="exp1-violin-boxplot" title="Figure: Llama vs. Deepseek Distilled Violin-Boxplot">
+<figure>
+  <img src="./images/experiment-001/energy_violin_boxplot.png" alt="exp1-violin-boxplot">
+  <figcaption><strong>Figure: Llama vs. DeepSeek Distilled Violin-Boxplot</strong></figcaption>
+</figure>
 
+<figure>
+  <img src="./images/experiment-002/energy_violin_boxplot.png" alt="exp1-violin-boxplot">
+  <figcaption><strong>Figure: Qwen vs. DeepSeek Distilled Violin-Boxplot</strong></figcaption>
+</figure>
 
+Across both architectures, the data illustrates a substantial decrease in energy demand as precision is reduced. Moving from **16-bit** to **4-bit** precision resulted in a median energy reduction of approximately **65-70%**. DeepSeek-r1-7b is the exception to this while showing much smaller relative gains from quantization because it already operates at an efficient low energy floor in its 16-bit configuration (under 250J). 
 
-Figure: Qwen vs. Deepseek Distilled Violin-Boxplot
+Furthermore, when considering distillation, the results suggest a trend toward lower energy requirements in the DeepSeek-distilled student, especially for Qwen. For instance, while **Qwen-fp16** median energy hovered near **1500 Joules**, the **DS-fp16** version operated below **250 Joules**. This observation supports the idea that efficiency-focused training and distillation might manifest as lower physical energy demand during inference. 
 
-Across both architectures, the data illustrates a substantial decrease in energy demand as precision is reduced. Moving from 16-bit to 4-bit precision resulted in a median energy reduction of approximately 65-70%. DeepSeek-r1-7b is the exception to this while showing much smaller relative gains from quantization because it already operates at an efficient low energy floor in its 16-bit configuration (under 250J). 
+A key finding in our analysis is the _"Stability Gap"_ observed between precision levels. In batch 1, the 4-bit models show compact distributions, indicating a high degree of predictability. However, as precision increases, both the baseline Llama and the DeepSeek distilled models exhibit elongated "necks" and extreme outliers reaching 3000 Joules. In the **16-bit** comparison, while the DeepSeek-distilled model maintained a lower median, it showed significantly **higher variance**, represented by a much taller boxplot.
 
-Furthermore, when considering distillation, the results suggest a trend toward lower energy requirements in the DeepSeek-distilled student, especially for Qwen. For instance, while Qwen-fp16 median energy hovered near 1500 Joules, the DS-fp16 version operated below 250 Joules. This observation supports the idea that efficiency-focused training and distillation might manifest as lower physical energy demand during inference. 
-
-A key finding in our analysis is the "Stability Gap" observed between precision levels. In batch 1, the 4-bit models show compact distributions, indicating a high degree of predictability. However, as precision increases, both the baseline Llama and the DeepSeek distilled models exhibit elongated "necks" and extreme outliers reaching 3000 Joules. In the 16-bit (fp16) comparison, while the DeepSeek-distilled model maintained a lower median, it showed significantly higher variance, represented by a much taller boxplot.
-
-Since we minimize external noise and use identical prompts, this variance likely represents internal algorithmic stochasticity. This indicates that the distilled model’s internal activation patterns are less stable at high precision, leading to fluctuations in energy demand that are not present in the Llama baseline. Interestingly, batch 2 disrupts this trend. The DeepSeek-distilled Qwen maintains a compact, predictable distribution across all precision levels. This lack of extreme variance indicates that high-precision volatility is not a universal trait of distilled models, and may instead be influenced by the specific characteristics of the base architecture. 
+Since we minimize external noise and use identical prompts, this variance likely represents _internal algorithmic stochasticity_. This indicates that the distilled model’s internal activation patterns are less stable at high precision, leading to fluctuations in energy demand that are not present in the Llama baseline. Interestingly, batch 2 disrupts this trend. The DeepSeek-distilled Qwen maintains a compact, predictable distribution across all precision levels. This lack of extreme variance indicates that high-precision volatility is not a universal trait of distilled models, and may instead be influenced by the specific characteristics of the base architecture. 
 
 ### Statistical Significance and Normality Testing
-To quantify the observed differences with scientific certainty, we must look beyond visual distributions. Building on our exploratory data analysis, we applied statistical validation to quantify the energy differences for statistically sound results.
-
-To select the appropriate significance tests, we first evaluated the normality of our dynamic energy data using the Shapiro-Wilk test. 
-
-Batch 1
-| Precision | Llama Norm p-value | DeepSeek Norm p-value | Statistical Test | p-value |
-| :--- | :--- | :--- |  :--- | :--- | 
-| 4-BIT | 0.28802 | 0.06512 | Welch's T-Test | 0.045|
-| 8-BIT | 0 | 0.00001 | Mann-Whitney U Test | 0.002 |
-| 16-BIT | 0.12689 | 0.01079 | Mann-Whitney U Test | 0.00015|
-
-Batch 2
-| Precision | Qwen Norm p-value | DeepSeek Norm p-value | Statistical Test | p-value |
-| :--- | :--- | :--- |  :--- | :--- | 
-| 4-BIT | 0.60197 | 0.00658 | Mann-Whitney U Test | 0.00.. |
-| 8-BIT | 0.99933 | 0.00090 | Mann-Whitney U Test | 0.00.. |
-| 16-BIT | 0.34477 | 0.00016 | Mann-Whitney U Test | 0.00..|
+To quantify the observed differences with scientific certainty, we must look beyond visual distributions. Building on our exploratory data analysis, we applied statistical validation to quantify the energy differences for statistically sound results. To select the appropriate significance tests, we first evaluated the normality of our dynamic energy data using the **Shapiro-Wilk test**. 
 
 
-Across every tested configuration in both experiments, the energy differences were statistically significant (p < 0.05), confirming that the observed energy savings are conclusive and not the result of random experimental noise.
+**Table 1: Statistical Validation (Llama vs DeepSeek-Distilled)**
+
+| Precision | Llama Norm ($p$) | DeepSeek Norm ($p$) | Statistical Test | Significance Result ($p$) |
+| :--- | :--- | :--- | :--- | :--- |
+| 4-BIT | 0.288 | 0.065 | Welch's T-Test | 0.045 |
+| 8-BIT | < 0.001 | < 0.001 | Mann-Whitney U | 0.002 |
+| 16-BIT | 0.127 | 0.011 | Mann-Whitney U | < 0.001 |
+
+
+**Table 2: Statistical Validation (Qwen vs DeepSeek-Distilled)**
+| Precision | Qwen Norm ($p$) | DeepSeek Norm ($p$) | Statistical Test | Significance Result ($p$) |
+| :--- | :--- | :--- | :--- | :--- |
+| 4-BIT | 0.602 | 0.007 | Mann-Whitney U | < 0.001 |
+| 8-BIT | 0.999 | < 0.001 | Mann-Whitney U | < 0.001 |
+| 16-BIT | 0.345 | < 0.001 | Mann-Whitney U | < 0.001 |
+
+Across every tested configuration in both experiments, the energy differences were **statistically significant** $(p < 0.05)$, confirming that the observed energy savings are conclusive and not the result of random experimental noise.
 Because Large Language Model inference involves probabilistic token generation, executions are rarely purely deterministic. Therefore, after ruling out experimental errors and external noise, we can conclude that non-normality here is an expected characteristic of AI execution, not an experimental flaw.
 
 ### Effect Size
-Effect Size analysis measures the magnitude of those differences to assess their practical significance.
+Effect Size analysis measures the magnitude of those differences to assess their practical significance. We use two primary metrics based on the data distribution:
 
-Table 1 : Horizontal Effect Size (Llama vs. DeepSeek Distilled)
-| Precision | Metric | Llama Energy (J) | DeepSeek Energy (J) | Savings | Effect Size Metric | Value | 
+- **Cohen’s d**: Used for normal distributions to measure the difference between means normalized by standard deviation.
+- **Vargha-Delaney A12**: A non-parametric "common language" effect size used for non-normal data. It represents the probability that a random execution from the first group will consume more energy than one from the second.
+
+<br>
+
+**Table 1: Horizontal Effect Size (Llama vs. DeepSeek Distilled)**
+| Precision | Metric | Llama Energy (J) | DeepSeek Energy (J) | Distill Savings | Effect Size Metric | Value | 
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | 
 | 4-BIT | Mean | 534.2 | 448.2 | 16.1% | Cohen's d | 0.54 | 
 | 8-BIT | Median | 827.2 | 641.1 | 22.5% | A12 | 0.74 | 
 | 16-BIT | Median | 1677.7 | 1273.2 | 24.1% | A12 | 0.81 |
 
-Table 2 : Horizontal Effect Size (Qwen vs. DeepSeek Distilled)
-| Precision | Metric | Qwen Energy (J) | DeepSeek Energy (J) | Savings | Effect Size Metric | Value | 
+<br>
+
+**Table 2: Horizontal Effect Size (Qwen vs. DeepSeek Distilled)**
+| Precision | Metric | Qwen Energy (J) | DeepSeek Energy (J) | Distill Savings | Effect Size Metric | Value | 
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | 
 | 4-BIT | Median | 526.6 | 25.8 | 95.1% | A12 | 1.00 |
 | 8-BIT | Median | 864.0 | 81.4 | 90.6% | A12 | 1.00 | 
 | 16-BIT | Median | 1482.5 | 143.6 | 90.3% | A12 | 1.00 |
 
-The data indicates that the DeepSeek-distilled models are consistently more efficient than their baseline counterparts. Notably, the effect size increases with precision: the Vargha-Delaney A12 value of 0.81 for the 16-bit model represents a large effect, indicating a high probability that a random DeepSeek execution will be more efficient than a Llama execution. For Qwen, the distillation effect is really interesting achieving ~90% energy savings across all precisions. The A12 score of 1.00 means that in 100% of the recorded pairs, the DeepSeek model consumed less energy than the Qwen baseline.
+The data indicates that the DeepSeek-distilled models are consistently more efficient than their baseline counterparts. The Vargha-Delaney **A12** value of **0.81** for the **16-bit** model, in Llama vs DeepSeek comparison, represents a large effect, indicating a high probability that a random DeepSeek-Distilled execution will be more efficient than a Llama execution. For Qwen, the distillation effect is really interesting achieving **~90%** energy savings across all precisions. The **A12** score of **1.00** means that in *100%* of the recorded pairs, the DeepSeek model consumed less energy than the Qwen baseline.
 
-Table : Vertical Effect Size (Quantization Savings)
+**Table 3: Vertical Effect Size (Quantization Savings)**\
+*This table measures the impact of reducing precision (Quantization) within the same model family.*
 | Model Family | FP16 -> Q8 Sav. | A12 (16->8) | FP16 -> Q4 Sav. | A12 (16->4) | 
 | :--- | :--- | :--- | :--- | :--- | 
 | Llama 3.1 | 50.7% | 0.92 | 67.4% | 0.99 | 33.8% | 0.88
@@ -125,17 +138,34 @@ Table : Vertical Effect Size (Quantization Savings)
 | DeepSeek R1 Distilled Qwen 2.5 | 43.3% | 0.81 | 82.0% | 0.90 | 68.3% | 0.78
 
 
-Remarkably, even for the highly efficient DeepSeek-Qwen model, applying 4-bit quantization reduces its already low energy footprint by a further 82.0%. While both distillation and quantization benefit energy savings, we observe that quantization is more effective in this regard.
+Remarkably, even for the highly efficient *DeepSeek-Qwen* model, applying 4-bit quantization reduces its already low energy footprint by a further **82.0%**. While both distillation and quantization benefit energy savings, we observe that quantization is more effective in this regard.
 
-### EDP
-The transition from raw energy consumption to the Energy-Delay Product (EDP) provides a holistic view of the efficiency of the Llama and DeepSeek architectures by penalizing slower execution times. 
+### Energy-Delay Product (EDP)
+The transition from raw energy consumption to the EDP provides a holistic view of the efficiency of the Llama and DeepSeek architectures by penalizing slower execution times. 
 
-The EDP plots of Qwen and DeepSeek-Distilled were separated, because of the high difference in EDP score.
+<figure>
+  <img src="./images/experiment-001/edp_boxplot.png" alt="exp1-edp-boxplot">
+  <figcaption><strong>Figure: Llama vs. DeepSeek Distilled EDP boxplot</strong></figcaption>
+</figure>
 
-We also measured volatility (Coefficient of Variation, or CV%) to indicate predictability, showing how much a model's individual runs deviate relative to its average.
+*The EDP plots of Qwen and DeepSeek-Distilled were separated, because of the high difference in EDP score.*
 
-Table: EDP and Volatility - Batch 1 (Llama 3.1 8B vs DeepSeek Distilled Llama)
-| Model | Energy (J) | Time (s) | EDP Score | Volatility (CV%) | 
+<div style="display: flex; gap: 20px; justify-content: center; align-items: flex-end;">
+  <figure style="flex: 1; max-width: 800px;">
+    <img src="./images/experiment-002/edp_boxplot-qwen.png" alt="exp2-edp-qwen-boxplot" style="width: 100%;">
+    <figcaption align="center"><strong>Qwen EDP Baseline</strong></figcaption>
+  </figure>
+  
+  <figure style="flex: 1; max-width: 800px;">
+    <img src="./images/experiment-002/edp_boxplot-deepseek-qwen.png" alt="exp2-edp-ds-boxplot" style="width: 100%;">
+    <figcaption align="center"><strong>DeepSeek-Distilled Qwen</strong></figcaption>
+  </figure>
+</div>
+
+We also measured volatility (**Coefficient of Variation, or CV%**) to indicate predictability, showing how much a model's individual runs deviate relative to its average.
+
+**Table: EDP and Volatility - (Llama 3.1 8B vs DeepSeek Distilled Llama)**
+| Model | Median Energy (J) | Time (s) | EDP Score | Volatility (CV%) | 
 | :--- | :--- | :--- | :--- | :--- | 
 | DS-q4_K_M | 462.5 | 9.60 | 4162.0 | 56.8% |
 | Llama-q4_K_M | 547.8 | 10.31 | 6056.2 | 39.8% |
@@ -144,8 +174,8 @@ Table: EDP and Volatility - Batch 1 (Llama 3.1 8B vs DeepSeek Distilled Llama)
 | DS-fp16 | 1273.2 | 23.01 | 32111.7 | 71.2% |
 | Llama-fp16 | 1677.7 | 30.42 | 51466.1 | 45.6% |
 
-Table: EDP and Volatility - Batch 2 (Qwen 2.5 7B vs DeepSeek Distilled Qwen) 
-| Model | Energy (J) | Time (s) | EDP Score | Volatility (CV%) | 
+**Table: EDP and Volatility - (Qwen 2.5 7B vs DeepSeek Distilled Qwen)** 
+| Model | Median Energy (J) | Time (s) | EDP Score | Volatility (CV%) | 
 | :--- | :--- | :--- | :--- | :--- | 
 | DS-q4_K_M | 25.8 | 3.20 | 79.8 | 85.4% | 
 | Qwen-q4_K_M | 526.6 | 9.31 | 5,187.9 | 41.1% |
@@ -188,7 +218,17 @@ These findings shift our understanding of DeepSeek's efficiency. While Experimen
 Conversational verbosity naturally leads to longer execution times, incurring proportionally higher total energy costs. Conversely, DeepSeek’s distilled behavior enables it to satisfy prompt requirements with far fewer tokens, demonstrating that its most universal sustainability advantage is algorithmic conciseness. By getting straight to the point, the distilled models shut down the GPU faster and avoid continuous generation costs. In the context of Green Software Engineering, this confirms that when evaluating an AI model that uses less total power is not necessarily more sustainable-it may simply be doing less work; true sustainability should be evaluated at the token level.
 
 
-## Limitations/Implications
+## Limitations & Future Work 
+This study prioritized experimental control, and a few design choices constrain how far the findings generalize.
+
+All inferences used a single fixed prompt. Keeping conditions identical across all models required this, but it means the verbosity and energy patterns we observed are specific to structured reasoning tasks. Testing across a broader prompt set would strengthen the conclusions, particularly to see whether the behavioral differences between distilled and non-distilled models persist across different task types like code generation or summarization.
+
+The hardware setup is also worth acknowledging. Everything ran on a single machine, and energy readings during inference are sensitive to GPU architecture and thermal behavior. The relative differences between models should still hold, but the absolute values are specific to our setup. Expanding to additional model architectures beyond Llama and Qwen would help clarify whether the efficiency patterns found here are general properties of knowledge distillation from DeepSeek-R1, or something more specific to the two architectures tested.
+
+Finally, DeepSeek's thinking mode was disabled throughout to keep the comparison fair against models that do not have an equivalent feature. The energy figures for DeepSeek are therefore likely lower than a real deployment with extended reasoning enabled would produce. Measuring that overhead, and whether it is offset by quality improvements, would be a natural follow-up.
+
+Beyond these limitations, the most immediate extension would be evaluating response correctness alongside energy consumption. This study identifies which models are more efficient, but not whether that comes at a quality cost. Computing a quality per joule metric would make the findings considerably more actionable, and exploring different quantization parameters alongside this would also be worthwhile.
+
 
 
 ## Conclusion
@@ -201,10 +241,6 @@ In Sustainable Software Engineering, predictability is highly valued in practica
 
 Circling back to our research question, our results indicate that some level of efficiency transfer is possible through distillation. Both distilled models demonstrated measurable energy savings compared to their baselines, with Qwen’s architecture being seemingly more receptive to these efficiency gains.
 While we cannot make absolute, universal claims without testing a wider array of model families, our results provide compelling evidence that distillation is a highly effective, albeit architecture-dependent, pathway for Green AI. Further research is necessary to fully map how these efficiency traits interact with different foundational neural networks across varied hardware.
-
-## Future Work
-
-
 
 
 <!-- References
