@@ -21,9 +21,9 @@ While DeepSeek’s training efficiency has been widely celebrated, its inference
 To answer our research question, we designed an experimental setup to compare the energy consumption between DeepSeek distilled and conventionally-trained models under controlled conditions. When it comes to the choice of particular models to test, we decided to use Llama 3.1 and Qwen 2.5 because the release of DeepSeek-R1 includes distilled variants of both architectures. This allows us to perform a direct comparison without needing to distill the models ourselves. For each architecture, we test at 3 quantization levels (4, 8, and 16 bit) to determine whether any observed efficiency differences persist across the range of precisions used in common deployments.
 
 We ran the models on a single laptop with the following specifications:
-GPU: Nvidia GeForce RTX 4090 Mobile 16GB GDDR6
-CPU: 13th Gen Intel(R) Core(TM) i9-13900H (2.60 GHz)
-OS: NixOS 25.11 “Xantusia”
+- GPU: Nvidia GeForce RTX 4090 Mobile 16GB GDDR6
+- CPU: 13th Gen Intel(R) Core(TM) i9-13900H (2.60 GHz)
+- OS: NixOS 25.11 “Xantusia”
 
 We test the following 12 models locally using [Ollama](https://ollama.com/) and measure their energy consumption using [EnergiBridge](https://github.com/tdurieux/EnergiBridge). Due to storage limitations, we could only load 6 models at a time on the system, so each architecture was tested separately on different days which should not impact our findings since we are not comparing architectures.
 
@@ -47,7 +47,7 @@ Before starting the experiment, we ensure a minimal running system by closing al
 With our raw metrics successfully recorded by _EnergiBridge_, we were left with 420 individual CSV files (30 trials across 12 model configurations, plus a baseline control group in each experiment). In this study, we focus on Graphics Processing Unit (GPU) metrics because LLM inference is fundamentally a GPU-bound workload. 
 
 ### Total Energy (Trapezoid Rule)
-EnergiBridge records power consumption as a rate (milliwatts) at regular time intervals. To find the actual total energy consumed by the GPU during a prompt generation, we needed to calculate the total area under the power-over-time curve. We achieved this by applying the Trapezoid Rule for numerical integration. By integrating the GPU power (converted to Watts) over the duration of the execution (in seconds), we successfully derived the Total Energy in Joules for every single trial.
+EnergiBridge records power consumption as a rate (milliwatts) at regular time intervals. To find the actual total energy consumed by the GPU during a prompt generation, we needed to calculate the total area under the power-over-time curve. We achieved this by applying the **Trapezoid Rule** for numerical integration. By integrating the GPU power (converted to Watts) over the duration of the execution (in seconds), we successfully derived the Total Energy in *Joules* for every single trial.
 
 ### Data Cleaning: Errors and Outliers
 
@@ -140,6 +140,8 @@ The data indicates that the DeepSeek-distilled models are consistently more effi
 
 Remarkably, even for the highly efficient *DeepSeek-Qwen* model, applying 4-bit quantization reduces its already low energy footprint by a further **82.0%**. While both distillation and quantization benefit energy savings, we observe that quantization is more effective in this regard.
 
+
+
 ### Energy-Delay Product (EDP)
 The transition from raw energy consumption to the EDP provides a holistic view of the efficiency of the Llama and DeepSeek architectures by penalizing slower execution times. 
 
@@ -184,38 +186,34 @@ We also measured volatility (**Coefficient of Variation, or CV%**) to indicate p
 | DS-fp16 | 143.6 | 7.60 | 1,097.2 | 57.0% | 
 | Qwen-fp16 | 1482.5 | 25.51 | 37,447.1 | 32.4% |
 
-The results indicate that 4-bit quantization generally represents the most sustainable configuration. Remarkably, DeepSeek distilled Qwen’s highest-cost configuration (DS-fp16, EDP 1,097.2) is still nearly five times more efficient than the baseline Qwen's lowest-cost configuration (Qwen-q4_K_M, EDP 5,187.9). Furthermore, the 4-bit versions exhibit the lowest relative volatility, indicating that aggressive quantization does not just save power, yielding more stable and predictable performance. In contrast, 8-bit quantization acts as an unstable middle ground (154.4% DeepSeek and 135.1% Llama) where execution paths become highly unpredictable, occasionally triggering massive latency and energy spikes.
+The results indicate that **4-bit** quantization generally represents the most sustainable configuration. Remarkably, DeepSeek distilled Qwen’s highest-cost configuration (*DS-fp16, EDP 1,097.2*) is still nearly five times more efficient than the baseline Qwen's lowest-cost configuration (*Qwen-q4_K_M, EDP 5,187.9*). Furthermore, the 4-bit versions exhibit the lowest relative volatility, indicating that aggressive quantization does not just save power, yielding more stable and predictable performance. In contrast, **8-bit** quantization acts as an unstable middle ground (*154.4% DeepSeek and 135.1% Llama*) where execution paths become highly unpredictable, occasionally triggering massive latency and energy spikes.
 
-While the distilled DeepSeek models consistently achieve the lowest median EDP scores, their higher CV% values might initially suggest they are more erratic. For example, Qwen 16-bit quantization, the CV is 32.4%, while the distilled version shows a more "volatile" 57.0%. However, the EDP scores for Qwen range massively between 15,000 to 60,000, unlike the distilled version which remains small and stable.
+While the distilled DeepSeek models consistently achieve the lowest median EDP scores, their higher CV% values might initially suggest they are more erratic. For example, *Qwen 16-bit* quantization, the CV is 32.4%, while the *distilled version* shows a more "volatile" 57.0%. However, the EDP scores for Qwen range massively between 15,000 to 60,000, unlike the distilled version which remains small and stable.
 
 
 ### Joules per Token
 
-To enable fair comparison of energy usage despite varying response length from the LLMs, we normalize the results by calculating Joules used per token generated. Our analysis reveals a critical distinction between a model's underlying computational cost and its algorithmic conciseness. For Llama, initial total energy results favored DeepSeek-Distilled, but normalization shows near-identical J/tok, indicating no fundamental difference in computational cost. For Qwen, however, the distilled DeepSeek model demonstrates dramatic efficiency gains across all precision levels. This suggests that for the Qwen architecture, distillation successfully reduced the computational overhead for token generation.
+To enable fair comparison of energy usage despite varying response length from the LLMs, we normalize the results by calculating **Joules used per token** generated. Our analysis reveals a critical distinction between a model's underlying computational cost and its algorithmic conciseness. For Llama, initial total energy results favored DeepSeek-Distilled, but normalization shows near-identical J/tok, indicating no fundamental difference in computational cost. For Qwen, however, the distilled DeepSeek model demonstrates dramatic efficiency gains across all precision levels. This suggests that for the Qwen architecture, distillation successfully reduced the computational overhead for token generation.
 
 ### Verbosity Gap
+
 We take a deeper look into the generated outputs to understand whether energy differences can be explained by a model’s natural tendency to be more or less verbose.
 
-Table: Verbosity Gap - Batch 1 (Llama vs. DeepSeek Distilled) 
-| Precision | DeepSeek Tokens | Llama Tokens | Verbosity Gap (% Increase) | 
+**Table: Verbosity Gap - Batch 1 (Llama vs. DeepSeek Distilled)** 
+| Precision | DeepSeek Tokens Median | Llama Tokens Median | Verbosity Gap (% Increase) | 
 | :--- | :--- | :--- | :--- | 
 | Q4 | 439 | 541 | +23.2% | 
 | Q8 | 437 | 571 | +30.7% | 
 | FP16 | 441 | 567 | +28.6% |
 
-Table: Verbosity Gap - Batch 2 (Qwen vs. DeepSeek Distilled) 
-| Precision | DeepSeek Tokens | Qwen Tokens | Verbosity Gap (% Increase) | 
+**Table: Verbosity Gap - Batch 2 (Qwen vs. DeepSeek Distilled)** 
+| Precision | DeepSeek Tokens Median | Qwen Tokens Median | Verbosity Gap (% Increase) | 
 | :--- | :--- | :--- | :--- | 
 | Q4 | 61 | 491 | +704.9% | 
 | Q8 | 76 | 568 | +647.4% | 
 | FP16 | 111 | 604 | +444.1% |
 
-On average, the baseline Llama architecture generated 27.5% more tokens per prompt than its distilled counterpart. The baseline Qwen architecture generated an astonishing 598.8% more tokens per prompt than the highly concise Qwen-distilled DeepSeek model. These findings shift our understanding of DeepSeek's efficiency. While our results prove that distillation can improve mathematical instruction efficiency, both architectures definitively show that output volume is a massive driver of total power draw.
-
-
-#### Sustainability Implications
-These findings shift our understanding of DeepSeek's efficiency. While Experiment 2 proves that distillation can improve mathematical instruction efficiency (J/tok), both experiments definitively show that output volume is a massive driver of total power draw.
-Conversational verbosity naturally leads to longer execution times, incurring proportionally higher total energy costs. Conversely, DeepSeek’s distilled behavior enables it to satisfy prompt requirements with far fewer tokens, demonstrating that its most universal sustainability advantage is algorithmic conciseness. By getting straight to the point, the distilled models shut down the GPU faster and avoid continuous generation costs. In the context of Green Software Engineering, this confirms that when evaluating an AI model that uses less total power is not necessarily more sustainable-it may simply be doing less work; true sustainability should be evaluated at the token level.
+On average, the *baseline Llama* architecture generated **27.5%** more tokens per prompt than its *distilled counterpart*. The *baseline Qwen* architecture generated an astonishing **598.8%** more tokens per prompt than the highly concise *Qwen-distilled DeepSeek* model. These findings shift our understanding of DeepSeek's efficiency. While our results prove that distillation can improve mathematical instruction efficiency, both architectures definitively show that output volume is a massive driver of total power draw.
 
 
 ## Limitations & Future Work 
